@@ -1,0 +1,52 @@
+# ═══════════════════════════════════════════════════════════════
+#  TurtleBot4 — docker-compose.yml
+#  Chaque membre de l'équipe fait : docker compose up -d
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  tb4:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    image: tb4_ros2_jazzy:latest        # nom de l'image locale buildée
+
+    container_name: tb4_container
+
+    environment:
+      # ── ROS2 ─────────────────────────────────────────────────
+      - ROS_DOMAIN_ID=42                # même ID pour toute l'équipe
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      # ── Affichage GUI (RViz, etc.) ───────────────────────────
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+      # ── Ollama (LLM tournant sur l'hôte) ─────────────────────
+      - OLLAMA_HOST=host.docker.internal:11434
+
+    # ── Volumes (ton code sync en temps réel) ──────────────────
+    volumes:
+      - .:/tb4_ws                       # ton code ROS2
+      - /tmp/.X11-unix:/tmp/.X11-unix   # affichage GUI Linux
+      - /dev/dri:/dev/dri               # accélération GPU pour affichage
+
+    # ── Réseau ─────────────────────────────────────────────────
+    network_mode: host                  # OBLIGATOIRE pour ROS2 DDS
+
+    # ── Privilèges (caméra, USB, DDS) ─────────────────────────
+    privileged: false
+    devices:
+      - /dev/dri                        # GPU render
+    ipc: host                           # mémoire partagée ROS2
+
+    # ── Lancement ──────────────────────────────────────────────
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+# ═══════════════════════════════════════════════════════════════
+# NOTE OLLAMA :
+#   Ollama tourne DIRECTEMENT sur l'ordinateur de l'université,
+#   PAS dans le container. Le container y accède via :
+#   http://host.docker.internal:11434
+#   → commande sur l'ordi hôte : ollama serve
+# ═══════════════════════════════════════════════════════════════

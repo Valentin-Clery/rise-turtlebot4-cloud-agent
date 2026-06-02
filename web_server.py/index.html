@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurtleBot 4 - Dashboard</title>
+
+    <script src="https://code.createjs.com/1.0.0/easeljs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ros2d@0/build/ros2d.min.js"></script>
+
+    <style>
+        body {
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { 
+            color: #89b4fa; 
+            margin: 0 0 20px 0; 
+            font-size: 1.8rem;
+            align-self: flex-start;
+            max-width: 1300px;
+            width: 100%;
+        }
+
+        /* Topbar : Alignement horizontal parfait des cartes d'état et boutons */
+        .topbar {
+            width: 100%;
+            max-width: 1300px;
+            margin-bottom: 24px;
+            display: flex;       
+            flex-direction: row; 
+            flex-wrap: nowrap;   
+            gap: 15px;           
+            justify-content: flex-start; 
+            box-sizing: border-box;
+        }
+
+        /* Style commun pour tout élément de la topbar (bouton ou div de statut) */
+        .topbar-item {
+            flex: 1;             
+            min-width: 160px;    
+            max-width: 280px;    
+            border: none;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: 8px;
+            white-space: nowrap; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+
+        .btn-static { background-color: #313244; color: #cdd6f4; cursor: default; }
+        
+        /* États des badges de connexion */
+        .status.connected { background-color: #a6e3a1; color: #11111b; }
+        .status.disconnected { background-color: #f38ba8; color: #11111b; }
+        
+        /* Grille principale */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr; 
+            grid-gap: 24px;
+            width: 100%;
+            max-width: 1300px;
+        }
+
+        /* Colonne gauche (Infos + Caméra) */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            height: 480px; 
+        }
+
+        .panel {
+            background-color: #1e1e2e; 
+            border: 1px solid #45475a;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        .info-panel { height: 170px; }
+
+        .camera-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #11111b;
+            border: 1px solid #313244;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #camera-stream {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Conserve le ratio de la caméra sans la déformer */
+        }
+
+        .map-panel { height: 480px; }
+        
+        /* CORRECTION ICI : Hauteur minimale globale accordée au conteneur de la chatbox */
+        .chat-panel {
+            grid-column: 1 / -1; 
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 350px; 
+        }
+
+        /* Titres des panneaux */
+        .panel h2 { 
+            margin: 0 0 14px 0; 
+            color: #f9e2af; 
+            font-size: 1.1rem; 
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Lignes de données (Panneau d'information) */
+        .data-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            margin: 6px 0; 
+            font-size: 1rem;
+            color: #bac2de;
+        }
+        .data-value { font-weight: bold; color: #a6e3a1; background: #313244; padding: 2px 8px; border-radius: 4px; }
+
+        /* Conteneur de carte */
+        #map {
+            background-color: #11111b;
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .log-camera-box {
+            flex: 1;
+            overflow-y: auto;
+            background-color: #11111b;
+            border: 1px solid #313244;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: #a6adc8;
+            line-height: 1.4;
+        }
+
+        .log-chat-box {
+            background-color: #11111b;
+            border: 1px solid #313244;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.95rem; 
+            color: #a6adc8;
+            line-height: 1.5;
+            height: 150px; 
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        /* Section d'input Chatbox */
+        .chat-input-area {
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            background-color: #11111b;
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            padding: 14px;
+            color: #cdd6f4;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .chat-input-area input:focus {
+            outline: none;
+            border-color: #89b4fa;
+        }
+
+        .chat-input-area button {
+            background-color: #89b4fa;
+            color: #11111b;
+            border: none;
+            border-radius: 8px;
+            padding: 0 32px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .chat-input-area button:hover { 
+            background-color: #b4befe;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>TB4 Control Panel</h1>
+
+    <div class="topbar">
+        <div id="btn-wifi" class="topbar-item btn-static disconnected">🌐 Réseau : En attente...</div>
+        <div id="btn-robot_ip" class="topbar-item btn-static disconnected">🆔 IP : --.--.--.--</div>
+        <div id="connection-status" class="topbar-item status disconnected">🔴 ROS 2 : En attente</div>
+        <div id="slm-connection-status" class="topbar-item status disconnected">🔴 LLM : En attente</div>
+    </div>
+
+    <div class="dashboard-grid">
+        
+        <div class="left-column">
+            <div class="panel info-panel">
+                <h2>📊 Informations</h2>
+                <div class="data-row"><span>Niveau Batterie</span> <span id="batt-pct" class="data-value">-- %</span></div>
+                <div class="data-row"><span>Sur le Dock</span> <span id="dock-status" class="data-value" style="color: #89dceb;">--</span></div>
+                <div class="data-row"><span>Délai Latence</span> <span id="delay-status" class="data-value" style="color: #89dceb;">--</span></div>
+            </div>
+
+            <div class="panel camera-panel">
+                <h2>📷 Flux Caméra (Direct)</h2>
+                <div class="video-container">
+                    <img id="camera-stream" src="" alt="En attente du flux vidéo..." style="width:100%; height:100%; object-fit:contain;" />
+                </div>
+            </div>
+        </div>
+
+        <div class="panel map-panel">
+            <h2>🗺️ Carte SLAM en temps réel</h2>
+            <div id="map"></div>
+        </div>
+
+        <div class="panel chat-panel">
+            <h2>💬 Commande Vocale / Textuelle (SLM)</h2>
+            <div id="chat-output" class="log-chat-box">En attente d'un ordre...</div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Ex: Va chercher une chaise...">
+                <button id="chat-send-btn" onclick="sendOrder()">Envoyer</button>
+            </div>
+        </div>  
+
+        <div style="margin-bottom: 15px; display: flex; gap: 10px; width: 100%; max-width: 1300px;">
+            <button id="btn-ctrl-rosbridge" onclick="toggleComponent('rosbridge')" style="padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor:pointer; border: none; background-color: #313244; color: #cdd6f4;">
+                🔄 Charger Rosbridge
+            </button>
+            <button id="btn-ctrl-brain_node" onclick="toggleComponent('brain_node')" style="padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor:pointer; border: none; background-color: #313244; color: #cdd6f4;">
+                🔄 Charger Brain Node
+            </button>
+            <button id="btn-ctrl-video_server" onclick="toggleComponent('video_server')" style="padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor:pointer; border: none; background-color: #313244; color: #cdd6f4;">
+                🔄 Charger Video Server
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+
+        function controlComponent(action, component) {
+            fetch(`/api/${action}/${component}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => console.log(data.message))
+                .catch(err => console.error("Erreur commande:", err));
+        }
+
+        // 1. Connexion au serveur Rosbridge avec reconnexion automatique
+        //const rosUrl = 'ws://localhost:9090';
+        const rosUrl = `ws://${window.location.hostname}:9090`;
+        //ros = new ROSLIB.Ros({ url: rosUrl });
+        var ros = new ROSLIB.Ros({
+            url : 'wss://9c8487d6aef5c0.lhr.life'
+        });
+
+        let reconnectTimer = null;
+
+        function attemptReconnection() {
+            if (reconnectTimer) return; 
+            console.log('Tentative de reconnexion dans 5 secondes...');
+            reconnectTimer = setTimeout(function() {
+                reconnectTimer = null;
+                ros.connect(rosUrl);
+            }, 5000);
+        }
+
+        ros.on('connection', function() {
+            let status_network = document.getElementById('btn-wifi');
+            let status_ip = document.getElementById('btn-robot_ip');
+            let status_ros2 = document.getElementById('connection-status');
+            let status_slm = document.getElementById('slm-connection-status');
+            status_network.innerText = "🌐 Réseau : TBT_rise";
+            status_network.className = 'topbar-item btn-static connected';
+            status_ip.innerText = "🆔 IP : " + window.location.hostname;
+            status_ip.className = 'topbar-item btn-static connected';
+            status_ros2.innerText = '🟢 ROS 2 : Connecté';
+            status_ros2.className = 'topbar-item status connected';
+            status_slm.innerText = '🟢 LLM : Connecté';
+            status_slm.className = 'topbar-item status connected';
+            console.log('Connecté au serveur websocket.');
+
+            // Génère dynamiquement l'URL du flux vidéo MJPEG vers le web_video_server (Port 8080)
+            document.getElementById('camera-stream').src = `http://${window.location.hostname}:8080/stream?topic=/oakd/rgb/preview/image_raw`;
+    
+            console.log('Connecté au serveur websocket.');
+
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        });
+
+        ros.on('error', function(error) {
+            console.log('Erreur de connexion : ', error);
+            attemptReconnection();
+        });
+
+        ros.on('close', function() {
+            let status_network = document.getElementById('btn-wifi');
+            let status_ip = document.getElementById('btn-robot_ip');
+            let status_ros2 = document.getElementById('connection-status');
+            let status_slm = document.getElementById('slm-connection-status');
+            status_network.innerText = "🌐 Réseau : Inconnu";
+            status_network.className = 'topbar-item btn-static disconnected';
+            status_ip.innerText = "🆔 IP : Inconnu";
+            status_ip.className = 'topbar-item btn-static disconnected';
+            status_ros2.innerText = '🔴 ROS 2 : Off';
+            status_ros2.className = 'topbar-item status disconnected';
+            status_slm.innerText = '🔴 LLM : Off';
+            status_slm.className = 'topbar-item status disconnected';
+            console.log('Connexion fermée.');
+
+            document.getElementById('camera-stream').src = "";
+            document.getElementById('camera-stream').alt = "ROS 2 Déconnecté - Flux interrompu";
+            attemptReconnection();
+        });
+
+        // Écoute du statut réseau et mise à jour du badge de connexion
+        var networkListener = new ROSLIB.Topic({
+            ros : ros,
+            name : '/network_state',
+            messageType : 'std_msgs/msg/String'
+        });
+
+        // Mise à jour du statut réseau dès réception d'un message
+        networkListener.subscribe(function(message) {
+            document.getElementById('btn-wifi').innerText = "🌐 Réseau : " + message.data;
+        });
+
+        var ipListener = new ROSLIB.Topic({
+            ros : ros,
+            name : '/robot_ip',
+            messageType : 'std_msgs/msg/String'
+        });
+
+        ipListener.subscribe(function(message) {
+            document.getElementById('btn-robot_ip').innerText = "🆔 IP : " + message.data;
+        });
+
+        // 2. Écoute de la Batterie et de la latence et mise à jour du Statut Robot
+        var batteryListener = new ROSLIB.Topic({
+            ros : ros,
+            name : '/battery_state',
+            messageType : 'sensor_msgs/msg/BatteryState'
+        });
+
+        batteryListener.subscribe(function(message) {
+            document.getElementById('batt-pct').innerText = (message.percentage * 100).toFixed(0) + ' %';
+        });
+
+        // 3. Écoute du statut de Docking
+        var dockListener = new ROSLIB.Topic({
+            ros : ros,
+            name : '/dock_status',
+            messageType : 'irobot_create_msgs/msg/DockStatus'
+        });
+
+        dockListener.subscribe(function(message) {
+            document.getElementById('dock-status').innerText = message.is_docked ? "OUI" : "NON";
+        });
+
+        // 4. Écoute des flux Caméra
+        var cameraListener = new ROSLIB.Topic({
+            ros : ros,
+            name : '/oakd/rgb/preview/image_raw',
+            messageType : 'sensor_msgs/msg/Image'
+        });
+
+        // 5. Affichage de la carte 2D
+        var viewer = new ROS2D.Viewer({
+            divID : 'map',
+            width : document.getElementById('map').clientWidth,
+            height : document.getElementById('map').clientHeight
+        });
+
+        var gridClient = new ROS2D.OccupancyGridClient({
+            ros : ros,
+            rootObject : viewer.scene,
+            continuous: true
+        });
+
+        gridClient.on('change', function(){
+            viewer.scaleToDimensions(gridClient.currentGrid.width, gridClient.currentGrid.height);
+            viewer.shift(gridClient.currentGrid.pose.position.x, gridClient.currentGrid.pose.position.y);
+        });
+
+        // 6. Affichage du Robot sur la carte
+        var poseListener = new ROSLIB.Topic({
+            ros : ros,
+            name : '/web_pose',
+            messageType : 'geometry_msgs/msg/PoseStamped'
+        });
+
+        var robotMarker = new createjs.Shape();
+        robotMarker.graphics.beginFill("#FF0000").drawCircle(0, 0, 10);
+        viewer.scene.addChild(robotMarker);
+
+        poseListener.subscribe(function(pose) {
+            robotMarker.x = pose.pose.position.x;
+            robotMarker.y = -pose.pose.position.y; 
+            //robotMarker.rotation = viewer.scene.rosQuaternionToGlobalTheta(pose.pose.orientation);
+            let q = pose.pose.orientation;
+
+            let yaw = Math.atan2(
+                2.0 * (q.w * q.z + q.x * q.y),
+                1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+            );
+
+            robotMarker.rotation = -yaw * 180 / Math.PI;
+        });
+
+        // 7. GESTION DE LA CHATBOX
+        var chatOrderTopic = new ROSLIB.Topic({
+            ros : ros,
+            name : '/web_chat_order',
+            messageType : 'std_msgs/msg/String'
+        });
+
+        var chatResponseListener = new ROSLIB.Topic({
+            ros : ros,
+            name : '/web_chat_response',
+            messageType : 'std_msgs/msg/String'
+        });
+
+        var chatOutput = document.getElementById('chat-output');
+
+        chatResponseListener.subscribe(function(message) {
+            chatOutput.innerHTML += `<br>${message.data}`;
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+        });
+
+        function sendOrder() {
+            var inputField = document.getElementById('chat-input');
+            var orderText = inputField.value.trim();
+            
+            if (orderText !== "") {
+                chatOutput.innerHTML = `🗣️ <b>Vous :</b> ${orderText}`;
+                var msg = new ROSLIB.Message({ data: orderText });
+                chatOrderTopic.publish(msg);
+                inputField.value = "";
+            }
+        }
+
+        document.getElementById('chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { sendOrder(); }
+        });
+    
+        // 8. SUIVI DE L'ÉTAT DU SERVEUR BACKEND (FastAPI)
+        let systemStatus = { rosbridge: false, brain_node: false, video_server: false };
+
+        function toggleComponent(component) {
+            const action = systemStatus[component] ? 'stop' : 'start';
+    
+            // Changement visuel immédiat pendant le chargement
+            const btn = document.getElementById(`btn-ctrl-${component}`);
+            btn.innerText = "⏳ En cours...";
+            btn.style.backgroundColor = "#f9e2af";
+            btn.style.color = "#11111b";
+
+            fetch(`/api/${action}/${component}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    console.log(data.message);
+                   checkSystemStatus(); // Force une vérification immédiate après l'action
+              })
+             .catch(err => {
+                  console.error("Erreur commande:", err);
+                    btn.innerText = "❌ Erreur";
+                    btn.style.backgroundColor = "#f38ba8";
+             });
+        }
+
+        async function checkSystemStatus() {
+            try {
+                let response = await fetch('/api/status');
+                systemStatus = await response.json();
+        
+                // Configuration des styles selon l'état réel du backend
+                const components = ['rosbridge', 'brain_node', 'video_server'];
+                const labels = { rosbridge: "Rosbridge", brain_node: "Brain Node", video_server: "Video Server" };
+        
+                components.forEach(comp => {
+                    const btn = document.getElementById(`btn-ctrl-${comp}`);
+                    if (systemStatus[comp]) {
+                        btn.innerText = `🛑 Arrêter ${labels[comp]} (Actif)`;
+                       btn.style.backgroundColor = "#a6e3a1"; // Vert
+                        btn.style.color = "#11111b";
+                  } else {
+                     btn.innerText = `🚀 Lancer ${labels[comp]} (Inactif)`;
+                     btn.style.backgroundColor = "#313244"; // Sombre
+                     btn.style.color = "#cdd6f4";
+                  }
+              });
+
+             // Vos anciens affichages de fallback réseau si rosbridge tourne
+             if (systemStatus.rosbridge) {
+                 document.getElementById('btn-wifi').innerText = "🌐 Réseau : TB4_Internal_Wifi";
+                  document.getElementById('btn-robot_ip').innerText = "🆔 IP : 192.168.1.45";
+              }
+           } catch (e) {
+               console.log("Serveur FastAPI injoignable.");
+          }
+        }
+
+        async function updatePing() {
+            try {
+                let response = await fetch('/api/ping');
+                let data = await response.json();
+
+                document.getElementById('delay-status').innerText = data.ping + " ms";
+            } catch(e) {
+                console.log(e);
+            }
+        }
+
+        setInterval(updatePing, 5000);
+        setInterval(checkSystemStatus, 2000);
+        checkSystemStatus();
+        
+    </script>
+</body>
+</html>
