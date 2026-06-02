@@ -17,7 +17,7 @@ WORKDIR /ros2_cloud_ws
 RUN mkdir -p src
 
 # Copie de ton code local (comme ton yolo_node.py) dans le container du serveur
-COPY ./src ./src
+COPY ./agent ./src
 
 # Compilation initiale du workspace
 RUN source /opt/ros/jazzy/setup.bash && colcon build --symlink-install
