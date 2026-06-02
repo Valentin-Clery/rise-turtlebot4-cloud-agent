@@ -32,6 +32,19 @@ rise-turtlebot4-cloud-agent/
 
 ## 1. Guide d'utilisation avec le serveur
 
+# Ouvrir un terminal pour se connecter au serveur Cloud :
+ssh root@51.158.64.140
+
+# Mettre à jour le serveur
+apt update && apt upgrade -y
+apt install -y docker.io docker-compose git
+
+# Répertoire
+cd /opt
+cd rise-turtlebot4-cloud-agent
+
+# Lancer le conteneur dans le serveur
+docker-compose up --build -d
 ---
 
 ## 2. LLM + Function calling + YOLO
