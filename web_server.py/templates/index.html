@@ -300,12 +300,8 @@
         }
 
         // 1. Connexion au serveur Rosbridge avec reconnexion automatique
-        //const rosUrl = 'ws://localhost:9090';
         const rosUrl = `ws://${window.location.hostname}:9090`;
-        //ros = new ROSLIB.Ros({ url: rosUrl });
-        var ros = new ROSLIB.Ros({
-            url : 'wss://9c8487d6aef5c0.lhr.life'
-        });
+        var ros = new ROSLIB.Ros({ url: rosUrl });
 
         let reconnectTimer = null;
 
@@ -334,8 +330,8 @@
             console.log('Connecté au serveur websocket.');
 
             // Génère dynamiquement l'URL du flux vidéo MJPEG vers le web_video_server (Port 8080)
-            document.getElementById('camera-stream').src = `http://${window.location.hostname}:8080/stream?topic=/oakd/rgb/preview/image_raw`;
-    
+            document.getElementById('camera-stream').src = "http://51.158.64.140:8090/stream?topic=/oakd/rgb/preview/image_raw";
+            
             console.log('Connecté au serveur websocket.');
 
             if (reconnectTimer) {

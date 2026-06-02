@@ -1,52 +1,26 @@
-# ═══════════════════════════════════════════════════════════════
-#  TurtleBot4 — docker-compose.yml
-#  Chaque membre de l'équipe fait : docker compose up -d
-# ═══════════════════════════════════════════════════════════════
+version: '3.8'
 
 services:
+  web_interface:
+    build: ./web_server
+    ports:
+      - "80:8000"
+    restart: always
 
-  tb4:
-    build:
-      context: ./docker
-      dockerfile: Dockerfile
-    image: tb4_ros2_jazzy:latest        # nom de l'image locale buildée
-
-    container_name: tb4_container
-
+  cloud_agent:
+    build: ./agent
     environment:
-      # ── ROS2 ─────────────────────────────────────────────────
-      - ROS_DOMAIN_ID=42                # même ID pour toute l'équipe
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      # ── Affichage GUI (RViz, etc.) ───────────────────────────
-      - DISPLAY=${DISPLAY:-:0}
-      - QT_X11_NO_MITSHM=1
-      # ── Ollama (LLM tournant sur l'hôte) ─────────────────────
-      - OLLAMA_HOST=host.docker.internal:11434
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    network_mode: "host" # Rejoint le réseau de la machine hôte
+    restart: always
 
-    # ── Volumes (ton code sync en temps réel) ──────────────────
-    volumes:
-      - .:/tb4_ws                       # ton code ROS2
-      - /tmp/.X11-unix:/tmp/.X11-unix   # affichage GUI Linux
-      - /dev/dri:/dev/dri               # accélération GPU pour affichage
-
-    # ── Réseau ─────────────────────────────────────────────────
-    network_mode: host                  # OBLIGATOIRE pour ROS2 DDS
-
-    # ── Privilèges (caméra, USB, DDS) ─────────────────────────
-    privileged: false
-    devices:
-      - /dev/dri                        # GPU render
-    ipc: host                           # mémoire partagée ROS2
-
-    # ── Lancement ──────────────────────────────────────────────
-    stdin_open: true
-    tty: true
-    restart: unless-stopped
-
-# ═══════════════════════════════════════════════════════════════
-# NOTE OLLAMA :
-#   Ollama tourne DIRECTEMENT sur l'ordinateur de l'université,
-#   PAS dans le container. Le container y accède via :
-#   http://host.docker.internal:11434
-#   → commande sur l'ordi hôte : ollama serve
-# ═══════════════════════════════════════════════════════════════
+  ros2_simulation:
+    build: ./simulation
+    container_name: cloud_gz_simulation
+    # IMPORTANT : network_mode "host" permet à ROS2 de communiquer nativement 
+    # avec l'agent et le Rosbridge sans barrière réseau Docker
+    network_mode: "host" 
+    environment:
+      - ROS_DOMAIN_ID=42
+    ipc: host # Optimise la mémoire partagée pour ROS2 et Gazebo
+    restart: always

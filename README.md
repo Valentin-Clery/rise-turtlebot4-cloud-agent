@@ -7,15 +7,21 @@
 ## Structure du projet
 
 ```
-tb4_ws/
-├── docker/
-│   └── Dockerfile          ← image du container
-├── docker-compose.yml      ← orchestration du container
-├── src/                    ← NOTRE CODE ROS2 (packages Python/C++)
-├── models/                 ← modèles YOLO (non versionnés)
-├── scripts/                ← scripts utilitaires
+rise-turtlebot4-cloud-agent/
 ├── .gitignore
-└── README.md
+├── README.md
+├── agent/
+│   ├── Dockerfile
+│   ├── agent_cloud.py
+│   ├── fsm.py
+│   ├── toolbox.py
+│   └── requirements.txt   ← websockets, openai, numpy
+└── web_server/
+    ├── Dockerfile
+    ├── web_server.py
+    ├── templates/
+    │   └── index.html     ← Ton interface de dashboard
+    └── requirements.txt   ← fastapi, uvicorn
 ```
 
 ---
