@@ -62,7 +62,6 @@ docker compose up -d
 # Vérification des conteneurs
 docker compose ps
 
-
 # Build global et simulation
 ssh root@51.158.64.140
 cd /opt/rise-turtlebot4-cloud-agent
@@ -70,23 +69,11 @@ cd /opt/rise-turtlebot4-cloud-agent
 # 1. On build tout proprement une seule fois
 docker compose build --no-cache
 
-# 2. On lance UNIQUEMENT la simulation (et les dépendances de carte/robot si besoin) en arrière-plan
-docker compose up -d ros2_simulation
-docker exec -it cloud_gz_simulation bash
-source install/setup.bash
+# On lance en local depuis un conteneur avec VS code
 ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py headless:=true
-
-# Ou on lance en local depuis avec un conteneur
-
 
 # Le pont Rosbridge
 ssh root@51.158.64.140
-
-# On entre dans le conteneur de simulation qui a déjà ROS 2 installé
-docker exec -it cloud_gz_simulation bash
-
-# (À l'intérieur du conteneur) On source et on lance le bridge
-source /opt/ros/jazzy/setup.bash
 
 # 1. Lancer le web_video_server en arrière-plan (le "&" libère le terminal)
 ros2 run web_video_server web_video_server --ros-args -p port:=8080 &
@@ -100,17 +87,23 @@ cd /opt/rise-turtlebot4-cloud-agent
 Pour en sortir sans tuer le conteneur, utilise la combinaison de touches Ctrl + P puis Ctrl + Q
 
 # On lance l'agent au premier plan pour voir ses "print" et le raisonnement de Groq
-docker compose up cloud_agent
+docker compose up -d cloud_agent
 
 # Interface web
 ssh root@51.158.64.140
 cd /opt/rise-turtlebot4-cloud-agent
 
 # Lance le serveur web au premier plan
-docker compose up web_interface
+docker compose up -d web_interface
 
 # Url page web
 http://51.158.64.140
+
+# Tunnel SSH inversé vers Scaleway
+# Elle ouvre une session SSH classique, mais elle dit aussi au serveur Scaleway : "Dès que quelqu'un chez toi (comme l'agent) parle sur ton port 9090, renvoie tout ce flux magiquement vers le port 9090 de mon PC local (où écoute Rosbridge)".
+ssh -R 9090:localhost:9090 root@51.158.64.140
+
+ssh -R 9090:localhost:9090 -R 8080:localhost:8080 root@51.158.64.140
 
 ---
 
