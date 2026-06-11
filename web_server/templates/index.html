@@ -301,9 +301,8 @@
 
         // 1. Connexion au serveur Rosbridge avec reconnexion automatique
         const ros = new ROSLIB.Ros({
-            url: 'ws://' + window.location.hostname + ':9090'
+            url: 'ws://localhost:9090'
         });
-
         let reconnectTimer = null;
 
         function attemptReconnection() {
@@ -331,8 +330,8 @@
             console.log('Connecté au Rosbridge WebSocket !');
 
             // Génère dynamiquement l'URL du flux vidéo MJPEG vers le web_video_server (Port 8080)
-            document.getElementById('camera-stream').src = "http://51.158.64.140:8080/stream?topic=/oakd/rgb/preview/image_raw";
-
+            document.getElementById('camera-stream').src = "http://localhost:8080/stream?topic=/intel_realsense_r200/image_raw";
+            
             console.log('Connecté au serveur websocket.');
 
             if (reconnectTimer) {
