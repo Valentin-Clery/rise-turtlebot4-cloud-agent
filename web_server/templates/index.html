@@ -22,9 +22,9 @@
             align-items: center;
         }
 
-        h1 { 
-            color: #89b4fa; 
-            margin: 0 0 20px 0; 
+        h1 {
+            color: #89b4fa;
+            margin: 0 0 20px 0;
             font-size: 1.8rem;
             align-self: flex-start;
             max-width: 1300px;
@@ -36,25 +36,25 @@
             width: 100%;
             max-width: 1300px;
             margin-bottom: 24px;
-            display: flex;       
-            flex-direction: row; 
-            flex-wrap: nowrap;   
-            gap: 15px;           
-            justify-content: flex-start; 
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            gap: 15px;
+            justify-content: flex-start;
             box-sizing: border-box;
         }
 
         /* Style commun pour tout élément de la topbar (bouton ou div de statut) */
         .topbar-item {
-            flex: 1;             
-            min-width: 160px;    
-            max-width: 280px;    
+            flex: 1;
+            min-width: 160px;
+            max-width: 280px;
             border: none;
             padding: 12px 16px;
             font-weight: 600;
             font-size: 0.95rem;
             border-radius: 8px;
-            white-space: nowrap; 
+            white-space: nowrap;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -62,15 +62,15 @@
         }
 
         .btn-static { background-color: #313244; color: #cdd6f4; cursor: default; }
-        
+
         /* États des badges de connexion */
         .status.connected { background-color: #a6e3a1; color: #11111b; }
         .status.disconnected { background-color: #f38ba8; color: #11111b; }
-        
+
         /* Grille principale */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 420px 1fr; 
+            grid-template-columns: 420px 1fr;
             grid-gap: 24px;
             width: 100%;
             max-width: 1300px;
@@ -81,11 +81,11 @@
             display: flex;
             flex-direction: column;
             gap: 24px;
-            height: 480px; 
+            height: 480px;
         }
 
         .panel {
-            background-color: #1e1e2e; 
+            background-color: #1e1e2e;
             border: 1px solid #45475a;
             border-radius: 12px;
             padding: 20px;
@@ -121,21 +121,21 @@
         }
 
         .map-panel { height: 480px; }
-        
-        /* CORRECTION ICI : Hauteur minimale globale accordée au conteneur de la chatbox */
+
+        /* Hauteur minimale globale accordée au conteneur de la chatbox */
         .chat-panel {
-            grid-column: 1 / -1; 
+            grid-column: 1 / -1;
             display: flex;
             flex-direction: column;
             gap: 12px;
-            min-height: 350px; 
+            min-height: 350px;
         }
 
         /* Titres des panneaux */
-        .panel h2 { 
-            margin: 0 0 14px 0; 
-            color: #f9e2af; 
-            font-size: 1.1rem; 
+        .panel h2 {
+            margin: 0 0 14px 0;
+            color: #f9e2af;
+            font-size: 1.1rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -143,13 +143,13 @@
             align-items: center;
             gap: 8px;
         }
-        
+
         /* Lignes de données (Panneau d'information) */
-        .data-row { 
-            display: flex; 
-            justify-content: space-between; 
+        .data-row {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            margin: 6px 0; 
+            margin: 6px 0;
             font-size: 1rem;
             color: #bac2de;
         }
@@ -187,10 +187,10 @@
             padding: 15px;
             border-radius: 8px;
             font-family: 'Fira Code', monospace;
-            font-size: 0.95rem; 
+            font-size: 0.95rem;
             color: #a6adc8;
             line-height: 1.5;
-            height: 150px; 
+            height: 150px;
             overflow-y: auto;
             box-sizing: border-box;
         }
@@ -228,7 +228,7 @@
             transition: background-color 0.2s;
         }
 
-        .chat-input-area button:hover { 
+        .chat-input-area button:hover {
             background-color: #b4befe;
         }
     </style>
@@ -245,7 +245,7 @@
     </div>
 
     <div class="dashboard-grid">
-        
+
         <div class="left-column">
             <div class="panel info-panel">
                 <h2>📊 Informations</h2>
@@ -274,7 +274,7 @@
                 <input type="text" id="chat-input" placeholder="Ex: Va chercher une chaise...">
                 <button id="chat-send-btn" onclick="sendOrder()">Envoyer</button>
             </div>
-        </div>  
+        </div>
 
         <div style="margin-bottom: 15px; display: flex; gap: 10px; width: 100%; max-width: 1300px;">
             <button id="btn-ctrl-rosbridge" onclick="toggleComponent('rosbridge')" style="padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor:pointer; border: none; background-color: #313244; color: #cdd6f4;">
@@ -289,7 +289,7 @@
         </div>
 
     </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
     <script>
 
         function controlComponent(action, component) {
@@ -300,13 +300,14 @@
         }
 
         // 1. Connexion au serveur Rosbridge avec reconnexion automatique
-        const rosUrl = `ws://${window.location.hostname}:9090`;
-        var ros = new ROSLIB.Ros({ url: rosUrl });
+        const ros = new ROSLIB.Ros({
+            url: 'ws://' + window.location.hostname + ':9090'
+        });
 
         let reconnectTimer = null;
 
         function attemptReconnection() {
-            if (reconnectTimer) return; 
+            if (reconnectTimer) return;
             console.log('Tentative de reconnexion dans 5 secondes...');
             reconnectTimer = setTimeout(function() {
                 reconnectTimer = null;
@@ -327,11 +328,11 @@
             status_ros2.className = 'topbar-item status connected';
             status_slm.innerText = '🟢 LLM : Connecté';
             status_slm.className = 'topbar-item status connected';
-            console.log('Connecté au serveur websocket.');
+            console.log('Connecté au Rosbridge WebSocket !');
 
             // Génère dynamiquement l'URL du flux vidéo MJPEG vers le web_video_server (Port 8080)
-            document.getElementById('camera-stream').src = "http://51.158.64.140:8090/stream?topic=/oakd/rgb/preview/image_raw";
-            
+            document.getElementById('camera-stream').src = "http://51.158.64.140:8080/stream?topic=/oakd/rgb/preview/image_raw";
+
             console.log('Connecté au serveur websocket.');
 
             if (reconnectTimer) {
@@ -341,7 +342,7 @@
         });
 
         ros.on('error', function(error) {
-            console.log('Erreur de connexion : ', error);
+            console.log('Erreur de connexion au Rosbridge: ', error);
             attemptReconnection();
         });
 
@@ -447,7 +448,7 @@
 
         poseListener.subscribe(function(pose) {
             robotMarker.x = pose.pose.position.x;
-            robotMarker.y = -pose.pose.position.y; 
+            robotMarker.y = -pose.pose.position.y;
             //robotMarker.rotation = viewer.scene.rosQuaternionToGlobalTheta(pose.pose.orientation);
             let q = pose.pose.orientation;
 
@@ -459,48 +460,103 @@
             robotMarker.rotation = -yaw * 180 / Math.PI;
         });
 
-        // 7. GESTION DE LA CHATBOX
-        var chatOrderTopic = new ROSLIB.Topic({
-            ros : ros,
-            name : '/web_chat_order',
-            messageType : 'std_msgs/msg/String'
+        // =========================================================================
+        // 7. INTERCONNEXION CHATBOX & AGENT LLM VIA ROSBRIDGE
+        // =========================================================================
+
+        // Déclaration du Topic pour ENVOYER les prompts à l'agent
+        const requestTopic = new ROSLIB.Topic({
+            ros: ros,
+            name: '/agent/request_prompt',
+            messageType: 'std_msgs/msg/String'
         });
 
-        var chatResponseListener = new ROSLIB.Topic({
-            ros : ros,
-            name : '/web_chat_response',
-            messageType : 'std_msgs/msg/String'
+        // Déclaration du Topic pour RECEVOIR les réponses de l'agent
+        const responseTopic = new ROSLIB.Topic({
+            ros: ros,
+            name: '/agent/response',
+            messageType: 'std_msgs/msg/String'
         });
 
-        var chatOutput = document.getElementById('chat-output');
-
-        chatResponseListener.subscribe(function(message) {
-            chatOutput.innerHTML += `<br>${message.data}`;
-            chatOutput.scrollTop = chatOutput.scrollHeight;
+        // S'abonner aux réponses de l'agent pour les afficher dans la chatbox
+        responseTopic.subscribe(function(message) {
+            console.log("Réponse reçue de l'agent: " + message.data);
+            ajouterMessageChatbox(message.data, 'agent');
         });
 
-        function sendOrder() {
-            var inputField = document.getElementById('chat-input');
-            var orderText = inputField.value.trim();
-            
-            if (orderText !== "") {
-                chatOutput.innerHTML = `🗣️ <b>Vous :</b> ${orderText}`;
-                var msg = new ROSLIB.Message({ data: orderText });
-                chatOrderTopic.publish(msg);
-                inputField.value = "";
+        // Fonction utilitaire pour ajouter proprement les messages dans l'interface
+        function ajouterMessageChatbox(texte, auteur) {
+            const chatOutput = document.getElementById('chat-output');
+
+            // Si c'est le tout premier message, on efface le texte d'attente par défaut
+            if (chatOutput.innerText === "En attente d'un ordre...") {
+                chatOutput.innerHTML = "";
             }
+
+        // Création de l'élément conteneur du message
+        const messageElement = document.createElement('div');
+        messageElement.style.marginBottom = "10px";
+        messageElement.style.padding = "8px 12px";
+        messageElement.style.borderRadius = "6px";
+        messageElement.style.maxWidth = "85%";
+        messageElement.style.wordBreak = "break-word";
+
+        // Style différencié selon l'auteur
+        if (auteur === 'user') {
+            messageElement.style.backgroundColor = "#313244"; // Couleur sombre de la grille
+            messageElement.style.color = "#89b4fa";           // Texte bleu utilisateur
+            messageElement.style.marginLeft = "auto";          // Aligné à droite
+            messageElement.style.textAlign = "right";
+            messageElement.innerHTML = `<strong>Vous :</strong> ${texte}`;
+        } else {
+            messageElement.style.backgroundColor = "#181825"; // Fond plus sombre pour l'agent
+            messageElement.style.color = "#a6e3a1";           // Texte vert LLM
+            messageElement.style.marginRight = "auto";         // Aligné à gauche
+            messageElement.style.textAlign = "left";
+
+            // Remplacement des sauts de ligne pour un affichage propre du raisonnement
+            const texteFormate = texte.replace(/\n/g, '<br>');
+            messageElement.innerHTML = `<strong>Robot :</strong> ${texteFormate}`;
         }
 
-        document.getElementById('chat-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') { sendOrder(); }
-        });
-    
+        // Ajout du message dans la boîte et défilement automatique vers le bas
+        chatOutput.appendChild(messageElement);
+        chatOutput.scrollTop = chatOutput.scrollHeight;
+    }
+
+    // Liaison avec le bouton "Envoyer" du HTML (qui appelle sendOrder)
+    function sendOrder() {
+        const inputElement = document.getElementById('chat-input');
+        const texte = inputElement.value;
+
+        if (texte.trim() !== "") {
+            // 1. Affichage immédiat dans l'interface locale
+            ajouterMessageChatbox(texte, 'user');
+
+            // 2. Publication du message sur le topic ROS 2
+            const stringMsg = new ROSLIB.Message({
+                data: texte
+            });
+            requestTopic.publish(stringMsg);
+
+            // 3. Reset du champ de saisie
+            inputElement.value = '';
+        }
+    }
+
+    // Permettre l'envoi en appuyant sur la touche "Entrée" du clavier
+    document.getElementById('chat-input').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            sendOrder();
+        }
+    });
+
         // 8. SUIVI DE L'ÉTAT DU SERVEUR BACKEND (FastAPI)
         let systemStatus = { rosbridge: false, brain_node: false, video_server: false };
 
         function toggleComponent(component) {
             const action = systemStatus[component] ? 'stop' : 'start';
-    
+
             // Changement visuel immédiat pendant le chargement
             const btn = document.getElementById(`btn-ctrl-${component}`);
             btn.innerText = "⏳ En cours...";
@@ -524,11 +580,11 @@
             try {
                 let response = await fetch('/api/status');
                 systemStatus = await response.json();
-        
+
                 // Configuration des styles selon l'état réel du backend
                 const components = ['rosbridge', 'brain_node', 'video_server'];
                 const labels = { rosbridge: "Rosbridge", brain_node: "Brain Node", video_server: "Video Server" };
-        
+
                 components.forEach(comp => {
                     const btn = document.getElementById(`btn-ctrl-${comp}`);
                     if (systemStatus[comp]) {
@@ -566,7 +622,7 @@
         setInterval(updatePing, 5000);
         setInterval(checkSystemStatus, 2000);
         checkSystemStatus();
-        
+
     </script>
 </body>
 </html>

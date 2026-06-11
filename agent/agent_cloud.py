@@ -9,13 +9,14 @@ from numpy import pi, inf
 from fsm import fsm
 from toolbox import FunctionsToolsCloud, ActionData
 
-ROSBRIDGE_IP = "100.91.109.112"
+ROSBRIDGE_IP = "localhost"
 ROSBRIDGE_PORT = 9090
 URI = f"ws://{ROSBRIDGE_IP}:{ROSBRIDGE_PORT}"
 
 class RobotAgentCloud:
     def __init__(self, Hz):
         self.uri = URI
+        self.ws = None # Contiendra la connexion WebSocket active
 
         # Configuration Groq / OpenAI API
         self.client = OpenAI(
@@ -27,21 +28,12 @@ class RobotAgentCloud:
         self.toolbox = FunctionsToolsCloud(self.uri, None)
         self.tools = self.toolbox.get_tools_def()
 
-        # Initialisation de la mémoire de la mission
-        self.chat_history = [
-            {(
-            "Tu es le cerveau algorithmique d'un TurtleBot 4. Tu dois accomplir la mission de l'utilisateur.\n"
-            "RÈGLE CRITIQUE DE PLANIFICATION :\n"
-            "Ne planifie JAMAIS plus de 1 ou 2 actions dans une seule réponse. Ne découpe PAS un déplacement en dizaines de micro-mouvements.\n"
-            "Si tu dois chercher quelqu'un, commence par faire UNE SEULE analyse caméra ou UN SEUL grand mouvement (ex: tourner sur soi-même pour chercher). "
-            "Attends ensuite l'observation avant de planifier l'étape suivante. Procède pas à pas."
-            )}
-        ]
+# Initialisation de la mémoire de la mission
+        self.chat_history = []
         self.user_input = None
         self.cmd_queue = []
         self.Hz = Hz
         self.T = 1.0 / Hz
-        self.subscribed_to_web = False
 
         self.call_action = None
         self.actionData = None
@@ -52,6 +44,7 @@ class RobotAgentCloud:
         # Configuration propre de la FSM
         self.fs = fsm([
             ('Start', 'UserPrompting', True),
+            # Reste en UserPrompting tant qu'aucune commande valide n'est reçue dans self.user_input
             ('UserPrompting', 'UserPrompting', self.KeepAsk, self.ask_user),
             ('UserPrompting', 'LLM_ReadQueue', self.check_Prompt_To_Action, self.ReadQueue),
             ('LLM_ReadQueue', 'LLM_ReadQueue', False),
@@ -67,19 +60,25 @@ class RobotAgentCloud:
         print("--- Agent LLM RISE Hybride (Groq Llama 3.1) Initialisé ---")
 
     def ask_user(self, fss, value):
-        self.user_input = input("Input Prompt\n>> ")
+        """
+        Méthode non-bloquante : Si self.user_input a été rempli par le spin_loop (via Rosbridge),
+        on déclenche l'appel LLM, sinon on passe simplement au tick suivant.
+        """
+        if self.user_input is not None and self.user_input.strip() != "":
+            print(f"📥 Nouveau prompt reçu de l'interface Web : {self.user_input}")
 
-        # Réinitialisation de la mémoire pour la nouvelle mission
-        self.chat_history = [
-            {'role': 'system', 'content': (
-                "Tu es le cerveau algorithmique d'un TurtleBot 4. Ton objectif est d'accomplir la mission de l'utilisateur "
-                "en appelant les fonctions à ta disposition de manière séquentielle.\n"
-                "Après chaque action, tu recevras une 'Observation'. Analyse-la pour planifier l'action suivante."
-            )}
-        ]
-        prompt_a_envoyer = self.user_input
-        self.user_input = None 
-        self.send_prompt(user_prompt=prompt_a_envoyer)
+            # Réinitialisation de la mémoire pour la nouvelle mission
+            self.chat_history = [
+                {'role': 'system', 'content': (
+                    "Tu es le cerveau algorithmique d'un TurtleBot 4. Ton objectif est d'accomplir la mission de l'utilisateur "
+                    "en appelant les fonctions à ta disposition de manière séquentielle.\n"
+                    "Après chaque action, tu recevras une 'Observation'. Analyse-la pour planifier l'action suivante."
+                )}
+            ]
+
+            prompt_a_envoyer = self.user_input
+            self.user_input = None  # Consommé
+            self.send_prompt(user_prompt=prompt_a_envoyer)
 
     def send_prompt(self, user_prompt=None, observation_prompt=None):
         # 1. Si c'est le premier ordre de l'utilisateur
@@ -105,6 +104,8 @@ class RobotAgentCloud:
 
             if message.content:
                 print(f"🧠 [Raisonnement LLM] : {message.content}")
+                # Envoi du raisonnement textuel au Dashboard Web via le topic dédié
+                self.publish_to_web("/agent/response", message.content)
 
             if message.tool_calls:
                 new_actions = []
@@ -126,6 +127,19 @@ class RobotAgentCloud:
         except Exception as e:
             print(f"Erreur Groq API : {e}")
             self.cmd_queue = []
+
+    def publish_to_web(self, topic, text_data):
+        """Prépare et planifie l'envoi d'un message String ROS 2 vers le Rosbridge"""
+        if self.ws:
+            msg = {
+                "op": "publish",
+                "topic": topic,
+                "msg": {
+                    "data": str(text_data)
+                }
+            }
+            # Utilisation de ensure_future car on est dans une fonction synchrone appelée par la FSM
+            asyncio.ensure_future(self.ws.send(json.dumps(msg)))
 
     def KeepAsk(self, fss): return (not(self.check_Prompt_To_Action(fss)))
     def check_Prompt_To_Action(self, fss): return (len(self.cmd_queue) != 0)
@@ -190,9 +204,7 @@ class RobotAgentCloud:
                     obs = f"L'analyse caméra montre les détections suivantes : {', '.join(detections)}."
 
                 print(f"👀 [YOLO Observation] : {obs}")
-
-                # On envoie l'observation au LLM. Il va analyser s'il voit la personne
-                # et générer l'action suivante (s'approcher ou tourner)
+                self.publish_to_web("/agent/response", f"👁️ Observation caméra envoyée au LLM.")
                 self.send_prompt(observation_prompt=obs) 
                 return True
 
@@ -229,49 +241,39 @@ class RobotAgentCloud:
     async def spin_loop(self):
         """Boucle d'exécution asynchrone principale connectée à Rosbridge"""
         async with websockets.connect(self.uri) as ws:
+            self.ws = ws  # Sauvegarde de la session globale pour les envois spontanés
             print("[Cloud Agent] Connecté au Rosbridge local !")
+            
+            # CORRECTION : S'abonner au bon topic configuré côté front-end
             subscribe_msg = {
                 "op": "subscribe",
-                "topic": "/web_chat_order",
+                "topic": "/agent/request_prompt",
                 "type": "std_msgs/msg/String"
             }
             await ws.send(json.dumps(subscribe_msg))
 
+            # Nettoyage des doublons de boucle (un seul sleep et structure épurée par cycle)
             while True:
                 try:
-                    # On écoute s'il y a des paquets entrants (comme le prompt du web)
-                    # timeout très court pour ne pas bloquer les cycles de la FSM (20Hz)
                     raw_data = await asyncio.wait_for(ws.recv(), timeout=0.001)
                     data = json.loads(raw_data)
 
-                    if data.get("op") == "publish" and data.get("topic") == "/web_chat_order":
-                        # On extrait le texte envoyé par le bouton du Dashboard
-                        # Selon la structure du msg, c'est souvent data["msg"]["data"] ou data["msg"]
-                        if isinstance(data["msg"], dict):
-                            self.user_input = data["msg"].get("data", "")
+                    if data.get("op") == "publish" and data.get("topic") == "/agent/request_prompt":
+                        # Extraction robuste du champ texte (String.msg possède un sous-champ "data")
+                        msg_payload = data.get("msg", {})
+                        if isinstance(msg_payload, dict):
+                            self.user_input = msg_payload.get("data", "")
                         else:
-                            self.user_input = data["msg"]
+                            self.user_input = msg_payload
                 except asyncio.TimeoutError:
-                    # Aucun message reçu à ce cycle, c'est normal, on continue
                     pass
                 except Exception as e:
                     print(f"Erreur lors de la réception WebSocket : {e}")
 
-                # 2. Exécution d'un tick de la FSM
+                # 1. Exécution d'un tick de la FSM (Non bloquant)
                 self.fs.event("")
 
-                # 3. Envoi continu des consignes de vitesse en cours (/cmd_vel)
-                if self.current_publish_msg:
-                    try:
-                        await ws.send(json.dumps(self.current_publish_msg))
-                    except Exception as e:
-                        print(f"Erreur d'envoi de flux vers le robot : {e}")
-
-                await asyncio.sleep(self.T)
-                # Exécution d'un tick de la FSM
-                self.fs.event("")
-
-                # Envoi continu des consignes de vitesse en cours
+                # 2. Envoi continu des consignes de vitesse en cours (/cmd_vel)
                 if self.current_publish_msg:
                     try:
                         await ws.send(json.dumps(self.current_publish_msg))

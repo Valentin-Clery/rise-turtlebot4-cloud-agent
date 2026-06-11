@@ -10,9 +10,7 @@ Ce dépôt contient l'architecture logicielle d'un agent robotique hybride inté
 
 ```text
 rise-turtlebot4-cloud-agent/
-├── .env                  # Clés secrètes (GROQ_API_KEY) - Ignoré par Git
-├── docker-compose.yml    # Orchestrateur multi-conteneurs pour le Cloud
-├── README.md             # Documentation du projet
+│
 ├── agent/
 │   ├── Dockerfile        # Image de l'Agent intelligent (ROS2 + Python Stack)
 │   ├── agent_cloud.py    # Nœud maître asynchrone orchestré par FSM
@@ -21,11 +19,24 @@ rise-turtlebot4-cloud-agent/
 │   ├── yolo_node.py      # Service ROS2 d'inférence de vision YOLOv8
 │   ├── dbgYoloServ.py    # Client de test et de visualisation YOLO
 │   └── requirements.txt  # websockets, openai, numpy, ultralytics
-└── web_server/
-    ├── Dockerfile        # Image du serveur Web léger (FastAPI)
-    ├── web_server.py     # Backend API REST & Passerelle ROS2
-    └── templates/
-        └── index.html    # Dashboard de contrôle (Visualisation SLAM, vidéo, Chat)
+│
+├── web_server/
+│    ├── Dockerfile       # Image du serveur Web léger (FastAPI)
+│    ├── web_server.py    # Backend API REST & Passerelle ROS2
+│    └── templates/
+│        └── index.html   # Dashboard de contrôle (Visualisation SLAM, vidéo, Chat)
+│
+├── .env                  # Clés secrètes (GROQ_API_KEY) - Ignoré par Git
+├── docker-compose.yml    # Orchestrateur multi-conteneurs 'agent' et 'web_server' sur Scaleway
+├── README.md             # Documentation du projet
+├── .gitignore            # Fichiers à ignorer par Git (clés API, caches)
+├── README.md             # Documentation globale du projet
+│
+└── simulation_locale/              # --- NOUVEAU DOSSIER LOCAL ---
+│    ├── .devcontainer/             # Configuration VS Code DevContainer
+│    │   ├── devcontainer.json
+│    │   └── Dockerfile
+│    └── src/                       # Scripts de launch ou nœuds ROS 2 locaux
 ```
 
 ---
@@ -39,12 +50,68 @@ ssh root@51.158.64.140
 apt update && apt upgrade -y
 apt install -y docker.io docker-compose git
 
-# Répertoire
-cd /opt
-cd rise-turtlebot4-cloud-agent
+# Répertoire du projet
+cd /opt/rise-turtlebot4-cloud-agent
 
-# Lancer le conteneur dans le serveur
-docker-compose up --build -d
+# Compilation propre de toute la stack
+docker compose build --no-cache
+
+# Lancement des conteneurs
+docker compose up -d
+
+# Vérification des conteneurs
+docker compose ps
+
+
+# Build global et simulation
+ssh root@51.158.64.140
+cd /opt/rise-turtlebot4-cloud-agent
+
+# 1. On build tout proprement une seule fois
+docker compose build --no-cache
+
+# 2. On lance UNIQUEMENT la simulation (et les dépendances de carte/robot si besoin) en arrière-plan
+docker compose up -d ros2_simulation
+docker exec -it cloud_gz_simulation bash
+source install/setup.bash
+ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py headless:=true
+
+# Ou on lance en local depuis avec un conteneur
+
+
+# Le pont Rosbridge
+ssh root@51.158.64.140
+
+# On entre dans le conteneur de simulation qui a déjà ROS 2 installé
+docker exec -it cloud_gz_simulation bash
+
+# (À l'intérieur du conteneur) On source et on lance le bridge
+source /opt/ros/jazzy/setup.bash
+
+# 1. Lancer le web_video_server en arrière-plan (le "&" libère le terminal)
+ros2 run web_video_server web_video_server --ros-args -p port:=8080 &
+
+# 2. Lancer ensuite ton rosbridge comme d'habitude
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+
+# Agent
+ssh root@51.158.64.140
+cd /opt/rise-turtlebot4-cloud-agent
+Pour en sortir sans tuer le conteneur, utilise la combinaison de touches Ctrl + P puis Ctrl + Q
+
+# On lance l'agent au premier plan pour voir ses "print" et le raisonnement de Groq
+docker compose up cloud_agent
+
+# Interface web
+ssh root@51.158.64.140
+cd /opt/rise-turtlebot4-cloud-agent
+
+# Lance le serveur web au premier plan
+docker compose up web_interface
+
+# Url page web
+http://51.158.64.140
+
 ---
 
 ## 2. LLM + Function calling + YOLO

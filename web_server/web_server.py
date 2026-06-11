@@ -15,6 +15,9 @@ from std_msgs.msg import String
 
 app = FastAPI(title="TB4 Control Center Dashboard Backend")
 
+# Récupère le dossier absolu où se trouve le script web_server.py
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Dictionnaire de suivi des sous-processus système
 processes = {
     "rosbridge": None,
@@ -26,7 +29,7 @@ processes = {
 class WebBridgeNode(Node):
     def __init__(self):
         super().__init__('web_dashboard_bridge')
-        
+
         # Ce nœud sert de relai pour journaliser l'activité sur la page Web si nécessaire
         self.response_sub = self.create_subscription(
             String,
@@ -56,8 +59,9 @@ ros_thread.start()
 
 @app.get("/")
 async def get_index():
-    # Renvoie le fichier HTML (assure-toi qu'il s'appelle index.html dans le même dossier)
-    return FileResponse("index.html")
+    # Construit le chemin absolu vers web_server/templates/index.html
+    template_path = os.path.join(CURRENT_DIR, "templates", "index.html")
+    return FileResponse(template_path)
 
 @app.get("/api/status")
 async def get_status():
@@ -118,7 +122,7 @@ async def stop_component(component: str):
             proc.wait(timeout=2)
         except subprocess.TimeoutExpired:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL) # Forçage si récalcitrant
-        
+
         processes[component] = None
         return {"message": f"{component} arrêté."}
     

@@ -145,7 +145,7 @@ class FunctionsToolsCloud():
             return ActionData('physical', 0.0, cmd_msg)
 
     async def execute_angular_odom(self, target_angle, direction) -> ActionData:
-                """Se connecte au Rosbridge, écoute /odom, pivote et calcule le delta d'angle (Yaw) exact via Quaternions"""
+        """Se connecte au Rosbridge, écoute /odom, pivote et calcule le delta d'angle (Yaw) exact via Quaternions"""
         async with websockets.connect(self.uri) as ws:
             subscribe_msg = {
                 "op": "subscribe",
