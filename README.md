@@ -70,6 +70,9 @@ cd /opt/rise-turtlebot4-cloud-agent
 docker compose build --no-cache
 
 # On lance en local depuis un conteneur avec VS code
+xhost +local:docker
+ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py gui:=false
+ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py mode:=headless
 ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py headless:=true
 
 # Le pont Rosbridge

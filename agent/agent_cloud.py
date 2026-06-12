@@ -259,12 +259,12 @@ class RobotAgentCloud:
                     data = json.loads(raw_data)
 
                     if data.get("op") == "publish" and data.get("topic") == "/agent/request_prompt":
-                        # Extraction robuste du champ texte (String.msg possède un sous-champ "data")
                         msg_payload = data.get("msg", {})
                         if isinstance(msg_payload, dict):
                             self.user_input = msg_payload.get("data", "")
                         else:
                             self.user_input = msg_payload
+                        print(f"📡 [WebSocket Réception brute] self.user_input est maintenant : {self.user_input}") # <-- AJOUTE CECI
                 except asyncio.TimeoutError:
                     pass
                 except Exception as e:

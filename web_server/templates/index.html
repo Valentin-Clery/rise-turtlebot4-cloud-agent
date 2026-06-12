@@ -310,7 +310,7 @@
             console.log('Tentative de reconnexion dans 5 secondes...');
             reconnectTimer = setTimeout(function() {
                 reconnectTimer = null;
-                ros.connect(rosUrl);
+                ros.connect('ws://localhost:9090');
             }, 5000);
         }
 
