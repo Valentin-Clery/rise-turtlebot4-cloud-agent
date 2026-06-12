@@ -31,7 +31,7 @@
             width: 100%;
         }
 
-        /* Topbar : Alignement horizontal parfait des cartes d'état et boutons */
+        /* Topbar : Alignement horizontal parfait des cartes d'état */
         .topbar {
             width: 100%;
             max-width: 1300px;
@@ -44,7 +44,7 @@
             box-sizing: border-box;
         }
 
-        /* Style commun pour tout élément de la topbar (bouton ou div de statut) */
+        /* Style commun pour tout élément de la topbar */
         .topbar-item {
             flex: 1;
             min-width: 160px;
@@ -117,12 +117,11 @@
         #camera-stream {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* Conserve le ratio de la caméra sans la déformer */
+            object-fit: contain;
         }
 
         .map-panel { height: 480px; }
 
-        /* Hauteur minimale globale accordée au conteneur de la chatbox */
         .chat-panel {
             grid-column: 1 / -1;
             display: flex;
@@ -131,7 +130,6 @@
             min-height: 350px;
         }
 
-        /* Titres des panneaux */
         .panel h2 {
             margin: 0 0 14px 0;
             color: #f9e2af;
@@ -144,7 +142,6 @@
             gap: 8px;
         }
 
-        /* Lignes de données (Panneau d'information) */
         .data-row {
             display: flex;
             justify-content: space-between;
@@ -155,7 +152,6 @@
         }
         .data-value { font-weight: bold; color: #a6e3a1; background: #313244; padding: 2px 8px; border-radius: 4px; }
 
-        /* Conteneur de carte */
         #map {
             background-color: #11111b;
             border: 1px solid #45475a;
@@ -166,19 +162,6 @@
             align-items: center;
             width: 100%;
             height: 100%;
-        }
-
-        .log-camera-box {
-            flex: 1;
-            overflow-y: auto;
-            background-color: #11111b;
-            border: 1px solid #313244;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.9rem;
-            color: #a6adc8;
-            line-height: 1.4;
         }
 
         .log-chat-box {
@@ -195,7 +178,6 @@
             box-sizing: border-box;
         }
 
-        /* Section d'input Chatbox */
         .chat-input-area {
             display: flex;
             gap: 12px;
@@ -235,7 +217,7 @@
         /* Style pour le bandeau de traitement temporaire */
         .system-status-msg {
             background-color: #313244;
-            border-left: 4px solid #f9e2af; /* Barre jaune Catppuccin */
+            border-left: 4px solid #f9e2af;
             color: #f9e2af;
             margin: 8px auto 8px 0;
             font-style: italic;
@@ -243,7 +225,6 @@
             animation: pulseStatus 2s infinite ease-in-out;
         }
 
-        /* Animation de pulsation douce */
         @keyframes pulseStatus {
             0% { opacity: 0.7; transform: scale(0.99); }
             50% { opacity: 1; transform: scale(1); }
@@ -294,29 +275,9 @@
             </div>
         </div>
 
-        <div style="margin-bottom: 15px; display: flex; gap: 10px; width: 100%; max-width: 1300px;">
-            <button id="btn-ctrl-rosbridge" onclick="toggleComponent('rosbridge')" style="padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor:pointer; border: none; background-color: #313244; color: #cdd6f4;">
-                🔄 Charger Rosbridge
-            </button>
-            <button id="btn-ctrl-brain_node" onclick="toggleComponent('brain_node')" style="padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor:pointer; border: none; background-color: #313244; color: #cdd6f4;">
-                🔄 Charger Brain Node
-            </button>
-            <button id="btn-ctrl-video_server" onclick="toggleComponent('video_server')" style="padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor:pointer; border: none; background-color: #313244; color: #cdd6f4;">
-                🔄 Charger Video Server
-            </button>
-        </div>
-
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+
     <script>
-
-        function controlComponent(action, component) {
-            fetch(`/api/${action}/${component}`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => console.log(data.message))
-                .catch(err => console.error("Erreur commande:", err));
-        }
-
         // 1. Connexion au serveur Rosbridge avec reconnexion automatique
         const ros = new ROSLIB.Ros({
             url: 'ws://localhost:9090'
@@ -332,25 +293,22 @@
             }, 5000);
         }
 
+        // --- GESTION DU BADGE ROS 2 VIA WEBSOCKET ---
         ros.on('connection', function() {
             let status_network = document.getElementById('btn-wifi');
             let status_ip = document.getElementById('btn-robot_ip');
             let status_ros2 = document.getElementById('connection-status');
-            let status_slm = document.getElementById('slm-connection-status');
+            
             status_network.innerText = "🌐 Réseau : TBT_rise";
             status_network.className = 'topbar-item btn-static connected';
             status_ip.innerText = "🆔 IP : " + window.location.hostname;
             status_ip.className = 'topbar-item btn-static connected';
+            
             status_ros2.innerText = '🟢 ROS 2 : Connecté';
             status_ros2.className = 'topbar-item status connected';
-            status_slm.innerText = '🟢 LLM : Connecté';
-            status_slm.className = 'topbar-item status connected';
             console.log('Connecté au Rosbridge WebSocket !');
 
-            // Génère dynamiquement l'URL du flux vidéo MJPEG vers le web_video_server (Port 8080)
             document.getElementById('camera-stream').src = "http://localhost:8080/stream?topic=/oakd/rgb/preview/image_raw";
-            
-            console.log('Connecté au serveur websocket.');
 
             if (reconnectTimer) {
                 clearTimeout(reconnectTimer);
@@ -367,15 +325,14 @@
             let status_network = document.getElementById('btn-wifi');
             let status_ip = document.getElementById('btn-robot_ip');
             let status_ros2 = document.getElementById('connection-status');
-            let status_slm = document.getElementById('slm-connection-status');
+            
             status_network.innerText = "🌐 Réseau : Inconnu";
             status_network.className = 'topbar-item btn-static disconnected';
             status_ip.innerText = "🆔 IP : Inconnu";
             status_ip.className = 'topbar-item btn-static disconnected';
+            
             status_ros2.innerText = '🔴 ROS 2 : Off';
             status_ros2.className = 'topbar-item status disconnected';
-            status_slm.innerText = '🔴 LLM : Off';
-            status_slm.className = 'topbar-item status disconnected';
             console.log('Connexion fermée.');
 
             document.getElementById('camera-stream').src = "";
@@ -383,82 +340,41 @@
             attemptReconnection();
         });
 
-        // Écoute du statut réseau et mise à jour du badge de connexion
-        var networkListener = new ROSLIB.Topic({
-            ros : ros,
-            name : '/network_state',
-            messageType : 'std_msgs/msg/String'
-        });
-
-        // Mise à jour du statut réseau dès réception d'un message
+        // Écouteurs ROS 2 classiques
+        var networkListener = new ROSLIB.Topic({ ros : ros, name : '/network_state', messageType : 'std_msgs/msg/String' });
         networkListener.subscribe(function(message) {
             document.getElementById('btn-wifi').innerText = "🌐 Réseau : " + message.data;
         });
 
-        var ipListener = new ROSLIB.Topic({
-            ros : ros,
-            name : '/robot_ip',
-            messageType : 'std_msgs/msg/String'
-        });
-
+        var ipListener = new ROSLIB.Topic({ ros : ros, name : '/robot_ip', messageType : 'std_msgs/msg/String' });
         ipListener.subscribe(function(message) {
             document.getElementById('btn-robot_ip').innerText = "🆔 IP : " + message.data;
         });
 
-        // 2. Écoute de la Batterie et de la latence et mise à jour du Statut Robot
-        var batteryListener = new ROSLIB.Topic({
-            ros : ros,
-            name : '/battery_state',
-            messageType : 'sensor_msgs/msg/BatteryState'
-        });
-
+        var batteryListener = new ROSLIB.Topic({ ros : ros, name : '/battery_state', messageType : 'sensor_msgs/msg/BatteryState' });
         batteryListener.subscribe(function(message) {
             document.getElementById('batt-pct').innerText = (message.percentage * 100).toFixed(0) + ' %';
         });
 
-        // 3. Écoute du statut de Docking
-        var dockListener = new ROSLIB.Topic({
-            ros : ros,
-            name : '/dock_status',
-            messageType : 'irobot_create_msgs/msg/DockStatus'
-        });
-
+        var dockListener = new ROSLIB.Topic({ ros : ros, name : '/dock_status', messageType : 'irobot_create_msgs/msg/DockStatus' });
         dockListener.subscribe(function(message) {
             document.getElementById('dock-status').innerText = message.is_docked ? "OUI" : "NON";
         });
 
-        // 4. Écoute des flux Caméra
-        var cameraListener = new ROSLIB.Topic({
-            ros : ros,
-            name : '/oakd/rgb/preview/image_raw',
-            messageType : 'sensor_msgs/msg/Image'
-        });
-
-        // 5. Affichage de la carte 2D
+        // Affichage de la carte 2D
         var viewer = new ROS2D.Viewer({
             divID : 'map',
             width : document.getElementById('map').clientWidth,
             height : document.getElementById('map').clientHeight
         });
 
-        var gridClient = new ROS2D.OccupancyGridClient({
-            ros : ros,
-            rootObject : viewer.scene,
-            continuous: true
-        });
-
+        var gridClient = new ROS2D.OccupancyGridClient({ ros : ros, rootObject : viewer.scene, continuous: true });
         gridClient.on('change', function(){
             viewer.scaleToDimensions(gridClient.currentGrid.width, gridClient.currentGrid.height);
             viewer.shift(gridClient.currentGrid.pose.position.x, gridClient.currentGrid.pose.position.y);
         });
 
-        // 6. Affichage du Robot sur la carte
-        var poseListener = new ROSLIB.Topic({
-            ros : ros,
-            name : '/web_pose',
-            messageType : 'geometry_msgs/msg/PoseStamped'
-        });
-
+        var poseListener = new ROSLIB.Topic({ ros : ros, name : '/web_pose', messageType : 'geometry_msgs/msg/PoseStamped' });
         var robotMarker = new createjs.Shape();
         robotMarker.graphics.beginFill("#FF0000").drawCircle(0, 0, 10);
         viewer.scene.addChild(robotMarker);
@@ -466,42 +382,22 @@
         poseListener.subscribe(function(pose) {
             robotMarker.x = pose.pose.position.x;
             robotMarker.y = -pose.pose.position.y;
-            //robotMarker.rotation = viewer.scene.rosQuaternionToGlobalTheta(pose.pose.orientation);
             let q = pose.pose.orientation;
-
-            let yaw = Math.atan2(
-                2.0 * (q.w * q.z + q.x * q.y),
-                1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-            );
-
+            let yaw = Math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
             robotMarker.rotation = -yaw * 180 / Math.PI;
         });
 
         // =========================================================================
-        // 7. INTERCONNEXION CHATBOX & AGENT LLM VIA ROSBRIDGE
+        // CHATBOX & AGENT LLM VIA ROSBRIDGE
         // =========================================================================
+        const requestTopic = new ROSLIB.Topic({ ros: ros, name: '/agent/request_prompt', messageType: 'std_msgs/msg/String' });
+        const responseTopic = new ROSLIB.Topic({ ros: ros, name: '/agent/response', messageType: 'std_msgs/msg/String' });
 
-        // Déclaration du Topic pour ENVOYER les prompts à l'agent
-        const requestTopic = new ROSLIB.Topic({
-            ros: ros,
-            name: '/agent/request_prompt',
-            messageType: 'std_msgs/msg/String'
-        });
-
-        // Déclaration du Topic pour RECEVOIR les réponses de l'agent
-        const responseTopic = new ROSLIB.Topic({
-            ros: ros,
-            name: '/agent/response',
-            messageType: 'std_msgs/msg/String'
-        });
-
-        // S'abonner aux réponses de l'agent pour les afficher dans la chatbox
         responseTopic.subscribe(function(message) {
             console.log("Réponse reçue de l'agent: " + message.data);
             ajouterMessageChatbox(message.data, 'agent');
         });
 
-        // Fonction utilitaire pour ajouter proprement les messages dans l'interface
         function ajouterMessageChatbox(texte, auteur) {
             const chatOutput = document.getElementById('chat-output');
 
@@ -511,9 +407,9 @@
 
             const messageElement = document.createElement('div');
             messageElement.style.marginBottom = "10px";
-            messageElement.style.padding = "8px 12px";
-            messageElement.style.borderRadius = "6px";
-            messageElement.style.maxWidth = "85%"
+            messageElement.style.padding = "10px 14px";
+            messageElement.style.borderRadius = "8px";
+            messageElement.style.maxWidth = "85%";
             messageElement.style.wordBreak = "break-word";
 
             if (auteur === 'user') {
@@ -523,21 +419,17 @@
                 messageElement.style.textAlign = "right";
                 messageElement.innerHTML = `<strong>Vous :</strong> ${texte}`;
             } 
-            // AJOUT : Style pour les messages d'attente système
             else if (auteur === 'system_status') {
-                // On lui donne un ID unique pour pouvoir le cibler et le détruire plus tard
                 messageElement.id = "tmp-status-msg"; 
-                messageElement.className = "system-status-msg"; // On applique l'animation CSS
+                messageElement.className = "system-status-msg";
                 messageElement.style.marginRight = "auto";
                 messageElement.style.textAlign = "left";
                 messageElement.innerHTML = `${texte}`;
             } 
             else {
-                // Si l'agent répond enfin, on peut supprimer le message de chargement temporaire s'il existe
                 const tmpMsg = document.getElementById("tmp-status-msg");
                 if (tmpMsg) tmpMsg.remove();
 
-                // Affichage du message final de confirmation de l'agent
                 messageElement.style.backgroundColor = "#181825";
                 messageElement.style.color = "#a6e3a1";
                 messageElement.style.marginRight = "auto";
@@ -550,98 +442,65 @@
             chatOutput.scrollTop = chatOutput.scrollHeight;
         }
 
-        // Liaison avec le bouton "Envoyer" du HTML (qui appelle sendOrder)
         function sendOrder() {
             const inputElement = document.getElementById('chat-input');
             const texte = inputElement.value;
 
-            if (texte.trim() !== "") {
-                // 1. Affichage immédiat du message utilisateur
-                ajouterMessageChatbox(texte, 'user');
+            // Sécurité : On bloque l'envoi si le LLM est détecté hors-ligne
+            let llmStatus = document.getElementById('slm-connection-status').classList.contains('connected');
+            if (!llmStatus) {
+                alert("⚠️ Impossible d'envoyer l'ordre : L'agent LLM (Brain Node) est hors-ligne !");
+                return;
+            }
 
-                // 2. Affichage immédiat d'un statut "En cours de traitement"
+            if (texte.trim() !== "") {
+                ajouterMessageChatbox(texte, 'user');
                 ajouterMessageChatbox("⏳ L'agent traite votre demande (Appel à Llama 3.1)...", 'system_status');
 
-                // 3. Publication du message sur le topic ROS 2
-                const stringMsg = new ROSLIB.Message({
-                    data: texte
-                });
+                const stringMsg = new ROSLIB.Message({ data: texte });
                 requestTopic.publish(stringMsg);
-
-                // 4. Reset du champ de saisie
                 inputElement.value = '';
             }
         }
 
-        // Permettre l'envoi en appuyant sur la touche "Entrée" du clavier
         document.getElementById('chat-input').addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                sendOrder();
-            }
+            if (event.key === 'Enter') { sendOrder(); }
         });
 
-        // 8. SUIVI DE L'ÉTAT DU SERVEUR BACKEND (FastAPI)
+        // 8. SUIVI DE L'ÉTAT DU SERVEUR BACKEND (FastAPI) & ETAT DU LLM
         let systemStatus = { rosbridge: false, brain_node: false, video_server: false };
-
-        function toggleComponent(component) {
-            const action = systemStatus[component] ? 'stop' : 'start';
-
-            // Changement visuel immédiat pendant le chargement
-            const btn = document.getElementById(`btn-ctrl-${component}`);
-            btn.innerText = "⏳ En cours...";
-            btn.style.backgroundColor = "#f9e2af";
-            btn.style.color = "#11111b";
-
-            fetch(`/api/${action}/${component}`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    console.log(data.message);
-                   checkSystemStatus(); // Force une vérification immédiate après l'action
-              })
-             .catch(err => {
-                  console.error("Erreur commande:", err);
-                    btn.innerText = "❌ Erreur";
-                    btn.style.backgroundColor = "#f38ba8";
-             });
-        }
 
         async function checkSystemStatus() {
             try {
                 let response = await fetch('/api/status');
                 systemStatus = await response.json();
 
-                // Configuration des styles selon l'état réel du backend
-                const components = ['rosbridge', 'brain_node', 'video_server'];
-                const labels = { rosbridge: "Rosbridge", brain_node: "Brain Node", video_server: "Video Server" };
+                // --- GESTION EXCLUSIVE DU BADGE LLM ---
+                let status_slm = document.getElementById('slm-connection-status');
+                if (systemStatus.brain_node) {
+                    status_slm.innerText = '🟢 LLM : Connecté';
+                    status_slm.className = 'topbar-item status connected';
+                } else {
+                    status_slm.innerText = '🔴 LLM : Off';
+                    status_slm.className = 'topbar-item status disconnected';
+                }
 
-                components.forEach(comp => {
-                    const btn = document.getElementById(`btn-ctrl-${comp}`);
-                    if (systemStatus[comp]) {
-                        btn.innerText = `🛑 Arrêter ${labels[comp]} (Actif)`;
-                       btn.style.backgroundColor = "#a6e3a1"; // Vert
-                        btn.style.color = "#11111b";
-                  } else {
-                     btn.innerText = `🚀 Lancer ${labels[comp]} (Inactif)`;
-                     btn.style.backgroundColor = "#313244"; // Sombre
-                     btn.style.color = "#cdd6f4";
-                  }
-              });
-
-             // Vos anciens affichages de fallback réseau si rosbridge tourne
-             if (systemStatus.rosbridge) {
-                 document.getElementById('btn-wifi').innerText = "🌐 Réseau : TB4_Internal_Wifi";
-                  document.getElementById('btn-robot_ip').innerText = "🆔 IP : 192.168.1.45";
-              }
-           } catch (e) {
-               console.log("Serveur FastAPI injoignable.");
-          }
+                if (systemStatus.rosbridge) {
+                    document.getElementById('btn-wifi').innerText = "🌐 Réseau : TB4_Internal_Wifi";
+                    document.getElementById('btn-robot_ip').innerText = "🆔 IP : 192.168.1.45";
+                }
+            } catch (e) {
+                console.log("Serveur FastAPI injoignable.");
+                let status_slm = document.getElementById('slm-connection-status');
+                status_slm.innerText = '🔴 LLM : Off (FastAPI Down)';
+                status_slm.className = 'topbar-item status disconnected';
+            }
         }
 
         async function updatePing() {
             try {
                 let response = await fetch('/api/ping');
                 let data = await response.json();
-
                 document.getElementById('delay-status').innerText = data.ping + " ms";
             } catch(e) {
                 console.log(e);
@@ -651,7 +510,6 @@
         setInterval(updatePing, 5000);
         setInterval(checkSystemStatus, 2000);
         checkSystemStatus();
-
     </script>
 </body>
 </html>
