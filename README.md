@@ -110,8 +110,13 @@ ssh -R 9090:localhost:9090 -R 8080:localhost:8080 root@51.158.64.140
 
 ---
 
-## 2. LLM + Function calling + YOLO
+## Mettre à jour le serveur
+# 1. On force l'alignement sur GitHub en écrasant les résidus locaux
+git fetch origin main
+git reset --hard origin/main
 
+# 2. On重建 et on relance les conteneurs en arrière-plan
+docker compose up -d --build
 ---
 
 ## 3. Initialisation avec un serveur custom

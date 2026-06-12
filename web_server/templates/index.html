@@ -487,68 +487,79 @@
         function ajouterMessageChatbox(texte, auteur) {
             const chatOutput = document.getElementById('chat-output');
 
-            // Si c'est le tout premier message, on efface le texte d'attente par défaut
             if (chatOutput.innerText === "En attente d'un ordre...") {
                 chatOutput.innerHTML = "";
             }
 
-        // Création de l'élément conteneur du message
-        const messageElement = document.createElement('div');
-        messageElement.style.marginBottom = "10px";
-        messageElement.style.padding = "8px 12px";
-        messageElement.style.borderRadius = "6px";
-        messageElement.style.maxWidth = "85%";
-        messageElement.style.wordBreak = "break-word";
+            const messageElement = document.createElement('div');
+            messageElement.style.marginBottom = "10px";
+            messageElement.style.padding = "8px 12px";
+            messageElement.style.borderRadius = "6px";
+            messageElement.style.maxWidth = "85%"
+            messageElement.style.wordBreak = "break-word";
 
-        // Style différencié selon l'auteur
-        if (auteur === 'user') {
-            messageElement.style.backgroundColor = "#313244"; // Couleur sombre de la grille
-            messageElement.style.color = "#89b4fa";           // Texte bleu utilisateur
-            messageElement.style.marginLeft = "auto";          // Aligné à droite
-            messageElement.style.textAlign = "right";
-            messageElement.innerHTML = `<strong>Vous :</strong> ${texte}`;
-        } else {
-            messageElement.style.backgroundColor = "#181825"; // Fond plus sombre pour l'agent
-            messageElement.style.color = "#a6e3a1";           // Texte vert LLM
-            messageElement.style.marginRight = "auto";         // Aligné à gauche
-            messageElement.style.textAlign = "left";
+            if (auteur === 'user') {
+                messageElement.style.backgroundColor = "#313244";
+                messageElement.style.color = "#89b4fa";
+                messageElement.style.marginLeft = "auto";
+                messageElement.style.textAlign = "right";
+                messageElement.innerHTML = `<strong>Vous :</strong> ${texte}`;
+            } 
+            // AJOUT : Style pour les messages d'attente système
+            else if (auteur === 'system_status') {
+                messageElement.id = "tmp-status-msg"; // On lui donne un ID pour pouvoir le supprimer plus tard si on veut
+                messageElement.style.backgroundColor = "#45475a";
+                messageElement.style.color = "#f9e2af"; // Jaune pastel Catppuccin
+                messageElement.style.margin = "5px auto 5px 0";
+                messageElement.style.fontStyle = "italic";
+                messageElement.innerHTML = `${texte}`;
+            } 
+            else {
+                // Si l'agent répond enfin, on peut supprimer le message de chargement temporaire s'il existe
+                const tmpMsg = document.getElementById("tmp-status-msg");
+                if (tmpMsg) tmpMsg.remove();
 
-            // Remplacement des sauts de ligne pour un affichage propre du raisonnement
-            const texteFormate = texte.replace(/\n/g, '<br>');
-            messageElement.innerHTML = `<strong>Robot :</strong> ${texteFormate}`;
+                messageElement.style.backgroundColor = "#181825";
+                messageElement.style.color = "#a6e3a1";
+                messageElement.style.marginRight = "auto";
+                messageElement.style.textAlign = "left";
+                const texteFormate = texte.replace(/\n/g, '<br>');
+                messageElement.innerHTML = `<strong>Robot :</strong> ${texteFormate}`;
+            }
+
+            chatOutput.appendChild(messageElement);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
         }
 
-        // Ajout du message dans la boîte et défilement automatique vers le bas
-        chatOutput.appendChild(messageElement);
-        chatOutput.scrollTop = chatOutput.scrollHeight;
-    }
+        // Liaison avec le bouton "Envoyer" du HTML (qui appelle sendOrder)
+        function sendOrder() {
+            const inputElement = document.getElementById('chat-input');
+            const texte = inputElement.value;
 
-    // Liaison avec le bouton "Envoyer" du HTML (qui appelle sendOrder)
-    function sendOrder() {
-        const inputElement = document.getElementById('chat-input');
-        const texte = inputElement.value;
+            if (texte.trim() !== "") {
+                // 1. Affichage immédiat de ton message dans l'interface
+                ajouterMessageChatbox(texte, 'user');
 
-        if (texte.trim() !== "") {
-            // 1. Affichage immédiat dans l'interface locale
-            ajouterMessageChatbox(texte, 'user');
+                // 2. AJOUT : Affichage immédiat d'un statut "En cours de traitement"
+                ajouterMessageChatbox("⏳ L'agent traite votre demande (Appel à Llama 3.1)...", 'system_status');
 
-            // 2. Publication du message sur le topic ROS 2
-            const stringMsg = new ROSLIB.Message({
-                data: texte
-            });
-            requestTopic.publish(stringMsg);
+                // 3. Publication du message sur le topic ROS 2
+                const stringMsg = new ROSLIB.Message({
+                    data: texte
+                });
+                requestTopic.publish(stringMsg);
 
-            // 3. Reset du champ de saisie
-            inputElement.value = '';
+                // 4. Reset du champ de saisie
+                inputElement.value = '';
+            }
         }
-    }
 
-    // Permettre l'envoi en appuyant sur la touche "Entrée" du clavier
-    document.getElementById('chat-input').addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            sendOrder();
-        }
-    });
+        // Permettre l'envoi en appuyant sur la touche "Entrée" du clavier
+        document.getElementById('chat-input').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                sendOrder();
+            }
+        });
 
         // 8. SUIVI DE L'ÉTAT DU SERVEUR BACKEND (FastAPI)
         let systemStatus = { rosbridge: false, brain_node: false, video_server: false };
